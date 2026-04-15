@@ -1,0 +1,2 @@
+Placeholder file to keep the src/test/java/com folder in git.
+

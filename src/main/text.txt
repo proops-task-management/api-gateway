@@ -1,0 +1,2 @@
+Placeholder file to keep the src/main folder in git.
+

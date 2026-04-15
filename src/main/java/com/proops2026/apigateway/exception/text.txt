@@ -1,0 +1,2 @@
+Exception package for gateway-wide exception handling.
+Expected file: GlobalExceptionHandler.java

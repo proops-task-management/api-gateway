@@ -1,0 +1,22 @@
+server:
+  port: ${PORT:8080}
+
+spring:
+  application:
+    name: api-gateway
+  main:
+    web-application-type: reactive
+  data:
+    redis:
+      host: ${SPRING_REDIS_HOST:redis}
+      port: ${SPRING_REDIS_PORT:6379}
+
+gateway:
+  routes:
+    user-service-url: ${SPRING_CLOUD_GATEWAY_ROUTES_USER_SERVICE_URL:http://user-service:8081}
+    task-service-url: ${SPRING_CLOUD_GATEWAY_ROUTES_TASK_SERVICE_URL:http://task-service:8082}
+    notification-service-url: ${SPRING_CLOUD_GATEWAY_ROUTES_NOTIFICATION_SERVICE_URL:http://notification-service:8083}
+
+jwt:
+  secret: ${JWT_SECRET:replace_with_minimum_32_char_random_string}
+

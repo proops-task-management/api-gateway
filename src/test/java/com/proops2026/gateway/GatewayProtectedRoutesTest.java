@@ -77,6 +77,26 @@ class GatewayProtectedRoutesTest {
     }
 
     @Test
+    void postUsersWithRole_withoutAuthorization_routesToUserService() throws InterruptedException {
+        taskService.enqueue(new MockResponse()
+            .setResponseCode(201)
+            .setHeader("Content-Type", "application/json")
+            .setBody("{\"id\":\"user-1\",\"role\":\"qa_lead\"}"));
+
+        webTestClient.post().uri("/users/with-role")
+            .header("Content-Type", "application/json")
+            .bodyValue("{\"email\":\"external@example.com\",\"password\":\"password123\",\"role\":\"QA_LEAD\"}")
+            .exchange()
+            .expectStatus().isCreated()
+            .expectBody()
+            .jsonPath("$.role").isEqualTo("qa_lead");
+
+        RecordedRequest forwarded = taskService.takeRequest();
+        assertThat(forwarded.getMethod()).isEqualTo("POST");
+        assertThat(forwarded.getPath()).isEqualTo("/users/with-role");
+    }
+
+    @Test
     void getTasks_invalidToken_returns401() {
         String badToken = TestJwtHelper.tokenSignedWithWrongSecret("user-1", "member");
 

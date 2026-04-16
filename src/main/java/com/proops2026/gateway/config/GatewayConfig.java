@@ -55,6 +55,12 @@ public class GatewayConfig {
                 .path("/users")
                 .metadata(AUTH_REQUIRED_METADATA, false)
                 .uri(userServiceUrl))
+            .route("users-register-with-role", r -> r
+                .method(HttpMethod.POST)
+                .and()
+                .path("/users/with-role")
+                .metadata(AUTH_REQUIRED_METADATA, false)
+                .uri(userServiceUrl))
             .route("auth-login", r -> r
                 .method(HttpMethod.POST)
                 .and()

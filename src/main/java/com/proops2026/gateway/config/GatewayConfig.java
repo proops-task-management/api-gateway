@@ -18,22 +18,25 @@ import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.WebFilter;
 import reactor.core.publisher.Mono;
 
+import static com.proops2026.gateway.filter.JwtAuthFilter.AUTH_REQUIRED_METADATA;
 import static org.springframework.web.reactive.function.server.RequestPredicates.GET;
 
 @Slf4j
 @Configuration
 public class GatewayConfig {
 
-    private static final String AUTH_REQUIRED_METADATA = "authRequired";
+    private final String userServiceUrl;
+    private final String taskServiceUrl;
+    private final String notificationServiceUrl;
 
-    @Value("${gateway.routes.user-service-url}")
-    private String userServiceUrl;
-
-    @Value("${gateway.routes.task-service-url}")
-    private String taskServiceUrl;
-
-    @Value("${gateway.routes.notification-service-url}")
-    private String notificationServiceUrl;
+    public GatewayConfig(
+            @Value("${gateway.routes.user-service-url}") String userServiceUrl,
+            @Value("${gateway.routes.task-service-url}") String taskServiceUrl,
+            @Value("${gateway.routes.notification-service-url}") String notificationServiceUrl) {
+        this.userServiceUrl = userServiceUrl;
+        this.taskServiceUrl = taskServiceUrl;
+        this.notificationServiceUrl = notificationServiceUrl;
+    }
 
     @Bean
     public RouteLocator gatewayRoutes(RouteLocatorBuilder builder) {
@@ -134,7 +137,8 @@ public class GatewayConfig {
         ServerHttpResponse response = exchange.getResponse();
         int status = response.getStatusCode() == null ? 200 : response.getStatusCode().value();
         long durationMs = System.currentTimeMillis() - startTime;
-        log.info("{} {} -> {} ({}ms)",
+        log.info("[{}] {} {} -> {} ({}ms)",
+            java.time.Instant.now(),
             exchange.getRequest().getMethod(),
             exchange.getRequest().getPath().value(),
             status,

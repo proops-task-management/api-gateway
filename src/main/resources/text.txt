@@ -1,2 +1,0 @@
-Placeholder file to keep the src/main/resources folder in git.
-

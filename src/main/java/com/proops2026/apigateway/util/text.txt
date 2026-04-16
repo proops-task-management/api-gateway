@@ -1,2 +1,0 @@
-Utility package for shared gateway helpers.
-Expected file: JwtUtil.java

@@ -1,2 +1,0 @@
-Configuration package for gateway routing and setup.
-Expected file: GatewayConfig.java

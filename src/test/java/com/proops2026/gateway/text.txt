@@ -1,3 +1,0 @@
-Test package root for api-gateway.
-Expected test files: GatewayPublicRoutesTest.java and GatewayProtectedRoutesTest.java
-

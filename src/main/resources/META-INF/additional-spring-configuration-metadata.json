@@ -1,0 +1,9 @@
+{
+  "properties": [
+    {
+      "name": "cors.allowed-origins",
+      "type": "java.lang.String",
+      "description": "Comma-separated list of allowed CORS origins. Override with env var CORS_ALLOWED_ORIGINS."
+    }
+  ]
+}

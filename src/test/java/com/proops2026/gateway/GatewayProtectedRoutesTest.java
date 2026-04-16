@@ -68,6 +68,15 @@ class GatewayProtectedRoutesTest {
     }
 
     @Test
+    void getUsers_missingAuthorization_returns401() {
+        webTestClient.get().uri("/users")
+            .exchange()
+            .expectStatus().isUnauthorized()
+            .expectBody()
+            .jsonPath("$.message").isEqualTo("authorization header required");
+    }
+
+    @Test
     void getTasks_invalidToken_returns401() {
         String badToken = TestJwtHelper.tokenSignedWithWrongSecret("user-1", "member");
 
@@ -148,6 +157,90 @@ class GatewayProtectedRoutesTest {
         assertThat(forwarded.getPath()).isEqualTo("/tasks");
         assertThat(forwarded.getHeader("X-User-Id")).isEqualTo("user-42");
         assertThat(forwarded.getHeader("X-User-Role")).isEqualTo("lead");
+    }
+
+    @Test
+    void getUsers_validToken_routesToUserService() throws InterruptedException {
+        String token = TestJwtHelper.validToken("user-42", "lead");
+        when(redisTemplate.hasKey(anyString())).thenReturn(Mono.just(false));
+
+        taskService.enqueue(new MockResponse()
+            .setResponseCode(200)
+            .setHeader("Content-Type", "application/json")
+            .setBody("[{\"id\":\"user-1\",\"email\":\"lead@example.com\",\"role\":\"lead\"}]"));
+
+        webTestClient.get().uri("/users")
+            .header("Authorization", "Bearer " + token)
+            .exchange()
+            .expectStatus().isOk()
+            .expectBody()
+            .jsonPath("$[0].id").isEqualTo("user-1");
+
+        RecordedRequest forwarded = taskService.takeRequest();
+        assertThat(forwarded.getPath()).isEqualTo("/users");
+        assertThat(forwarded.getHeader("X-User-Role")).isEqualTo("lead");
+    }
+
+    @Test
+    void postUsersAdmin_validToken_routesToUserService() throws InterruptedException {
+        String token = TestJwtHelper.validToken("user-42", "lead");
+        when(redisTemplate.hasKey(anyString())).thenReturn(Mono.just(false));
+
+        taskService.enqueue(new MockResponse()
+            .setResponseCode(201)
+            .setHeader("Content-Type", "application/json")
+            .setBody("{\"id\":\"user-1\",\"role\":\"member\"}"));
+
+        webTestClient.post().uri("/users/admin")
+            .header("Authorization", "Bearer " + token)
+            .header("Content-Type", "application/json")
+            .bodyValue("{\"email\":\"member@example.com\",\"password\":\"password123\",\"role\":\"member\"}")
+            .exchange()
+            .expectStatus().isCreated();
+
+        RecordedRequest forwarded = taskService.takeRequest();
+        assertThat(forwarded.getMethod()).isEqualTo("POST");
+        assertThat(forwarded.getPath()).isEqualTo("/users/admin");
+        assertThat(forwarded.getHeader("X-User-Role")).isEqualTo("lead");
+    }
+
+    @Test
+    void patchUser_validToken_routesToUserService() throws InterruptedException {
+        String token = TestJwtHelper.validToken("user-42", "lead");
+        when(redisTemplate.hasKey(anyString())).thenReturn(Mono.just(false));
+
+        taskService.enqueue(new MockResponse()
+            .setResponseCode(200)
+            .setHeader("Content-Type", "application/json")
+            .setBody("{\"id\":\"user-1\",\"role\":\"lead\"}"));
+
+        webTestClient.patch().uri("/users/user-1")
+            .header("Authorization", "Bearer " + token)
+            .header("Content-Type", "application/json")
+            .bodyValue("{\"role\":\"lead\"}")
+            .exchange()
+            .expectStatus().isOk();
+
+        RecordedRequest forwarded = taskService.takeRequest();
+        assertThat(forwarded.getMethod()).isEqualTo("PATCH");
+        assertThat(forwarded.getPath()).isEqualTo("/users/user-1");
+    }
+
+    @Test
+    void deleteUser_validToken_routesToUserService() throws InterruptedException {
+        String token = TestJwtHelper.validToken("user-42", "lead");
+        when(redisTemplate.hasKey(anyString())).thenReturn(Mono.just(false));
+
+        taskService.enqueue(new MockResponse().setResponseCode(204));
+
+        webTestClient.delete().uri("/users/user-1")
+            .header("Authorization", "Bearer " + token)
+            .exchange()
+            .expectStatus().isNoContent();
+
+        RecordedRequest forwarded = taskService.takeRequest();
+        assertThat(forwarded.getMethod()).isEqualTo("DELETE");
+        assertThat(forwarded.getPath()).isEqualTo("/users/user-1");
     }
 
     @Test

@@ -1,5 +1,7 @@
 package com.proops2026.gateway.config;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 
 import lombok.extern.slf4j.Slf4j;
@@ -11,6 +13,9 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.server.reactive.ServerHttpResponse;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.reactive.CorsWebFilter;
+import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
 import org.springframework.web.reactive.function.server.RouterFunction;
 import org.springframework.web.reactive.function.server.RouterFunctions;
 import org.springframework.web.reactive.function.server.ServerResponse;
@@ -18,22 +23,28 @@ import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.WebFilter;
 import reactor.core.publisher.Mono;
 
+import static com.proops2026.gateway.filter.JwtAuthFilter.AUTH_REQUIRED_METADATA;
 import static org.springframework.web.reactive.function.server.RequestPredicates.GET;
 
 @Slf4j
 @Configuration
 public class GatewayConfig {
 
-    private static final String AUTH_REQUIRED_METADATA = "authRequired";
+    private final String userServiceUrl;
+    private final String taskServiceUrl;
+    private final String notificationServiceUrl;
+    private final List<String> corsAllowedOrigins;
 
-    @Value("${gateway.routes.user-service-url}")
-    private String userServiceUrl;
-
-    @Value("${gateway.routes.task-service-url}")
-    private String taskServiceUrl;
-
-    @Value("${gateway.routes.notification-service-url}")
-    private String notificationServiceUrl;
+    public GatewayConfig(
+            @Value("${gateway.routes.user-service-url}") String userServiceUrl,
+            @Value("${gateway.routes.task-service-url}") String taskServiceUrl,
+            @Value("${gateway.routes.notification-service-url}") String notificationServiceUrl,
+            @Value("${cors.allowed-origins:http://localhost:3000,http://localhost:5173}") String corsAllowedOrigins) {
+        this.userServiceUrl = userServiceUrl;
+        this.taskServiceUrl = taskServiceUrl;
+        this.notificationServiceUrl = notificationServiceUrl;
+        this.corsAllowedOrigins = Arrays.asList(corsAllowedOrigins.split(","));
+    }
 
     @Bean
     public RouteLocator gatewayRoutes(RouteLocatorBuilder builder) {
@@ -49,6 +60,36 @@ public class GatewayConfig {
                 .and()
                 .path("/auth/login")
                 .metadata(AUTH_REQUIRED_METADATA, false)
+                .uri(userServiceUrl))
+            .route("users-list", r -> r
+                .method(HttpMethod.GET)
+                .and()
+                .path("/users")
+                .metadata(AUTH_REQUIRED_METADATA, true)
+                .uri(userServiceUrl))
+            .route("users-get", r -> r
+                .method(HttpMethod.GET)
+                .and()
+                .path("/users/{id}")
+                .metadata(AUTH_REQUIRED_METADATA, true)
+                .uri(userServiceUrl))
+            .route("users-admin-create", r -> r
+                .method(HttpMethod.POST)
+                .and()
+                .path("/users/admin")
+                .metadata(AUTH_REQUIRED_METADATA, true)
+                .uri(userServiceUrl))
+            .route("users-update", r -> r
+                .method(HttpMethod.PATCH)
+                .and()
+                .path("/users/{id}")
+                .metadata(AUTH_REQUIRED_METADATA, true)
+                .uri(userServiceUrl))
+            .route("users-delete", r -> r
+                .method(HttpMethod.DELETE)
+                .and()
+                .path("/users/{id}")
+                .metadata(AUTH_REQUIRED_METADATA, true)
                 .uri(userServiceUrl))
             .route("tasks-list", r -> r
                 .method(HttpMethod.GET)
@@ -122,6 +163,19 @@ public class GatewayConfig {
     }
 
     @Bean
+    public CorsWebFilter corsWebFilter() {
+        CorsConfiguration config = new CorsConfiguration();
+        corsAllowedOrigins.forEach(config::addAllowedOrigin);
+        config.addAllowedMethod("*");
+        config.addAllowedHeader("*");
+        config.setAllowCredentials(false);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", config);
+        return new CorsWebFilter(source);
+    }
+
+    @Bean
     public WebFilter requestLoggingFilter() {
         return (exchange, chain) -> {
             long startTime = System.currentTimeMillis();
@@ -134,7 +188,8 @@ public class GatewayConfig {
         ServerHttpResponse response = exchange.getResponse();
         int status = response.getStatusCode() == null ? 200 : response.getStatusCode().value();
         long durationMs = System.currentTimeMillis() - startTime;
-        log.info("{} {} -> {} ({}ms)",
+        log.info("[{}] {} {} -> {} ({}ms)",
+            java.time.Instant.now(),
             exchange.getRequest().getMethod(),
             exchange.getRequest().getPath().value(),
             status,

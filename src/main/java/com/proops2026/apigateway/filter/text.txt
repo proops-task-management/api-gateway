@@ -1,2 +1,0 @@
-Filter package for gateway request filtering.
-Expected file: JwtAuthFilter.java

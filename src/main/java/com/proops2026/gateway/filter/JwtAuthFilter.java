@@ -28,7 +28,7 @@ import reactor.core.publisher.Mono;
 @RequiredArgsConstructor
 public class JwtAuthFilter implements GlobalFilter, Ordered {
 
-    private static final String AUTH_REQUIRED_METADATA = "authRequired";
+    public static final String AUTH_REQUIRED_METADATA = "authRequired";
 
     private final JwtUtil jwtUtil;
     private final ReactiveStringRedisTemplate redisTemplate;

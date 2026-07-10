@@ -73,12 +73,14 @@ class JwtAuthFilterTest {
 
     @Test
     void filter_rejectsEmptyBearerToken() {
+        // An empty bearer ("Bearer " with no token) is MALFORMED, not a bad signature,
+        // so per IRD-003's contract the gateway returns "authorization header required".
         webTestClient.get().uri("/tasks")
             .header("Authorization", "Bearer ")
             .exchange()
             .expectStatus().isUnauthorized()
             .expectBody()
-            .jsonPath("$.message").isEqualTo("invalid or expired token");
+            .jsonPath("$.message").isEqualTo("authorization header required");
     }
 
     @Test

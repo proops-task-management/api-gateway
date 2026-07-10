@@ -1,0 +1,13 @@
+# .trivyignore — risk-accepted CVEs (IRD-021: each entry MUST carry CVE + reason + expiry ≤ 90 days;
+# an expired entry FAILS the build). These are FIXABLE Spring Framework CVEs; the real fix is the
+# Spring Boot bump scheduled for D5 (MIN-9, "triage vulns → zero-critical"). Accepted temporarily to
+# unblock D4 CI onboarding. Owner: minh_dt.
+
+# CVE-2024-38819 — Path traversal in Spring's FUNCTIONAL web frameworks (WebMvc.fn / WebFlux.fn).
+#   Low exploitability here: api-gateway routes via Spring Cloud Gateway RouteLocator, not fn endpoints.
+#   Real fix: Spring Boot 3.3.4 -> patched release at D5. Expiry: 2026-08-08
+CVE-2024-38819
+
+# CVE-2025-41249 — Spring Framework annotation-detection security bypass.
+#   Risk-accepted pending the Spring bump at D5 (MIN-9). Expiry: 2026-08-08
+CVE-2025-41249

@@ -20,5 +20,7 @@ jobs:
       stack: "java"
       java-version: "21"
       run-integration-tests: true
+      enable-sonar: true
     secrets:
       DEPLOY_REPO_TOKEN: ${{ secrets.DEPLOY_REPO_TOKEN }}
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

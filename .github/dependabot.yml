@@ -1,0 +1,28 @@
+# Dependabot standard (IRD-015): maven + docker + github-actions, weekly,
+# minor/patch grouped into one PR; majors come individually; security updates always on.
+version: 2
+updates:
+  - package-ecosystem: "maven"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    groups:
+      all-minor-patch:
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      all-minor-patch:
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      all-minor-patch:
+        update-types: ["minor", "patch"]

@@ -1,0 +1,24 @@
+name: Merge -> Build + Bump Dev
+
+# Thin caller: push to main -> reusable-build (build once, push :sha + :latest to GHCR,
+# trivy-image gate, then bump the deploy repo's dev overlay = GitOps handoff).
+# bump-dev self-skips until DEPLOY_REPO_TOKEN exists (D12), so this is green now.
+# Deploy is NOT here — push-deploy was retired at v6 (IRD-015).
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - '**/Jenkinsfile'
+
+jobs:
+  build:
+    uses: proops-task-management/cicd-platform/.github/workflows/reusable-build.yml@v6
+    with:
+      project-name: "proops-task-management"
+      service-name: "api-gateway"
+      stack: "java"
+      java-version: "21"
+      run-integration-tests: true
+    secrets:
+      DEPLOY_REPO_TOKEN: ${{ secrets.DEPLOY_REPO_TOKEN }}

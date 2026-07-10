@@ -1,0 +1,22 @@
+name: PR Open — App CI
+
+# Thin caller (<35 lines): backend PR to main -> the platform's reusable Java CI gate.
+# The job is named `app-ci` so the required check resolves to `app-ci / ci-success`
+# (identical name across all 5 services => one ruleset line covers them all — IRD-015).
+# NO paths filter on purpose: this IS the required status check, so it must report on
+# EVERY PR — a paths-ignore'd required check never reports and would deadlock merges.
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+jobs:
+  app-ci:
+    uses: proops-task-management/cicd-platform/.github/workflows/reusable-java-ci.yml@v6
+    with:
+      service-name: "api-gateway"
+      java-version: "21"
+      run-integration-tests: true
+      enable-sonar: true
+    secrets:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

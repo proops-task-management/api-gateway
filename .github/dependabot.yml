@@ -16,15 +16,16 @@ updates:
     schedule:
       interval: "weekly"
     ignore:
-      # Pin the JDK line — the app targets Java 21 and its Lombok version only supports
-      # JDK 21's javac internals. A base-image jump (temurin-21 -> 25/26) silently breaks
-      # Lombok's @Slf4j processor at Docker build time (the `log` symbol is never generated
-      # -> compile failure). Allow only patch bumps of the base images; block major + minor.
-      # Root cause of the D4 broken main build (MIN-8). Revisit when Lombok + Java 26 GA land.
+      # Builder image only exists at build time (multi-stage, discarded) — its CVEs never
+      # ship in the runtime image. Dependabot can't reason about the temurin suffix on
+      # maven:3.9-eclipse-temurin-21 and re-proposes the JDK 21->26 jump (classified as a
+      # "patch", so update-types filters miss it) which breaks Lombok's @Slf4j at Docker
+      # build time (MIN-8). Freeze the builder image entirely.
       - dependency-name: "maven"
-        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      # Runtime: keep Java 21 security patches, but block the JDK-major jump (21 -> 25/26)
+      # with a version range — reliable, independent of Dependabot's major/minor guess.
       - dependency-name: "eclipse-temurin"
-        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+        versions: [">=22"]
     groups:
       all-minor-patch:
         update-types: ["minor", "patch"]

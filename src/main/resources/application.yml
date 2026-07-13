@@ -1,11 +1,14 @@
 server:
   port: ${PORT:8080}
+  shutdown: graceful            # drain in-flight proxied requests before exit (IRD-003 amend)
 
 spring:
   application:
     name: api-gateway
   main:
     web-application-type: reactive
+  lifecycle:
+    timeout-per-shutdown-phase: 20s   # matches the pod terminationGracePeriod budget
   data:
     redis:
       host: ${SPRING_REDIS_HOST:redis}
@@ -18,8 +21,34 @@ gateway:
     notification-service-url: ${SPRING_CLOUD_GATEWAY_ROUTES_NOTIFICATION_SERVICE_URL:http://notification-service:8083}
 
 jwt:
-  secret: ${JWT_SECRET:replace_with_minimum_32_char_random_string}
+  # Verify-only RS256 (amended 2026-07-07 — IRD-003 / ADR-005). Newest-first list of PEM public
+  # keys; the gateway holds NO private key and cannot sign. No default → fail fast if unset
+  # (ESO/SSM `/proops/<env>/jwt/public_key` in k8s; an env var locally). Never hardcode.
+  public-keys: ${JWT_PUBLIC_KEYS}
 
 cors:
   allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true          # exposes /actuator/health/{liveness,readiness}
+      show-details: never       # no internal detail leak on an unauthenticated endpoint
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+  metrics:
+    distribution:
+      # Bounded SLO buckets only — feeds histogram_quantile() for p95 alerts without the
+      # full percentiles-histogram bucket explosion (IRD-020 60k-series budget). The gateway
+      # is the system-wide RED source: http_server_requests is URI-templated (/tasks/{id}).
+      slo:
+        http.server.requests: 100ms,300ms,1s,3s
 

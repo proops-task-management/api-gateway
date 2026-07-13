@@ -32,12 +32,40 @@ The gateway does not own:
 
 ---
 
+## Auth & Observability (Production Program — D7, IRD-003 amended + ADR-005)
+
+**JWT verification is RS256 verify-only (asymmetric), not HS256.**
+- The gateway holds ONLY the **public key(s)** — `JWT_PUBLIC_KEYS` (PEM list, newest-first)
+  replaces `JWT_SECRET`. It can verify user-service's tokens but **cannot sign** one, so a
+  compromised gateway can never forge identities. No shared secret exists anymore.
+- Key source: ESO secret backed by SSM `/proops/<env>/jwt/public_key` in k8s; an env var locally.
+  `JwtUtil` parses each PEM once at startup via the JDK `KeyFactory` — no BouncyCastle.
+- Multiple keys are accepted for 24 h dual-key rotation (IRD-019 runbook). Verification tries
+  each key newest-first; the token's `kid` header (`proops-v1`) is preserved for the deferred
+  full JWKS (ADR-005). The Redis blacklist-by-`jti` read path is **unchanged**.
+
+**Actuator exposed** (allowlist `health,prometheus`):
+- `/actuator/health/liveness` + `/actuator/health/readiness` — wired to k8s probes.
+- `/actuator/prometheus` — the gateway is the system-wide RED source (IRD-020): per-route
+  `http_server_requests`, URI-templated (`/tasks/{id}`, never raw IDs). Histogram buckets capped
+  to the SLO set `100ms,300ms,1s,3s`. No auth (gateway is the upstream enforcer).
+
+**Production hardening:** `server.shutdown=graceful` (20 s drain of in-flight proxied requests);
+JVM `-XX:MaxRAMPercentage=75.0` set in the **Dockerfile** (`JAVA_TOOL_OPTIONS`), never in yaml;
+downstream URLs are cluster DNS injected per env by the `app` chart; `CORS_ALLOWED_ORIGINS` per env.
+
+**Build note:** Lombok is pinned on the `maven-compiler-plugin` `annotationProcessorPaths` (JDK 23+
+disabled implicit classpath annotation-processing). Build with **Temurin 21**, never the host's
+newer JDK — see `docs/troubleshooting/TSG-002`.
+
+---
+
 ## NEVER
 - Generate code for user-service, task-service, notification-service, or frontend-service
 - Add routes that are not defined in DOP-001, IRD-003, or the referenced downstream contracts
 - Use broad catch-all routes such as `/**`, `/tasks/**`, or `/notifications/**` that expose undeclared endpoints
 - Own business data, create entities/repositories/migrations, or connect this repo to MySQL
-- Issue JWTs or call user-service at runtime to validate tokens - validate locally with `JWT_SECRET` only
+- Issue/sign JWTs or call user-service at runtime to validate tokens - verify locally with the RS256 **public key(s)** in `JWT_PUBLIC_KEYS` only
 - Trust client-supplied `X-User-Id` or `X-User-Role` headers - always remove and overwrite them from JWT claims before forwarding
 - Enforce lead/member task rules, ownership rules, or notification ownership in the gateway - downstream services own business authorization
 - Skip Redis blacklist checks on protected routes
@@ -64,7 +92,7 @@ The gateway does not own:
 | Language | Java 21 | Matches the platform baseline |
 | Framework | Spring Boot 3 | Standard across services |
 | Gateway | Spring Cloud Gateway | Reactive routing and filter chain |
-| JWT validation | jjwt | Same secret model as user-service |
+| JWT validation | jjwt (**RS256 public-key verify**) | Verify-only — gateway holds no signing key (IRD-003 amended) |
 | Blacklist store | Spring Data Redis | O(1) blacklist lookup by `jti` |
 | Build tool | Maven | Standardized dependency management |
 
@@ -223,7 +251,7 @@ Protected routes follow this exact flow:
 ```text
 1. Read Authorization header: "Bearer <token>"
 2. If header missing or malformed -> 401 { "message": "authorization header required" }
-3. Verify JWT signature with JWT_SECRET
+3. Verify JWT signature with an RS256 public key from JWT_PUBLIC_KEYS (newest-first, kid preserved)
 4. If signature invalid or token expired -> 401 { "message": "invalid or expired token" }
 5. Extract claims: userId, email, role, jti
 6. Check Redis key blacklist:{jti}
@@ -249,7 +277,7 @@ ServerHttpRequest mutatedRequest = exchange.getRequest()
 ```
 
 Important:
-- `JWT_SECRET` must match user-service exactly
+- `JWT_PUBLIC_KEYS` must be the public half of user-service's `JWT_PRIVATE_KEY` (RS256)
 - the gateway validates identity only
 - the gateway does not decide whether a caller may assign a task, update metadata, or read a notification owned by someone else
 
@@ -367,7 +395,7 @@ log.info("[{}] {} {} -> {} ({}ms)", timestamp, method, path, status, durationMs)
 
 Rules:
 - log every inbound request once
-- never log JWTs, `Authorization` headers, or `JWT_SECRET`
+- never log JWTs, `Authorization` headers, or `JWT_PUBLIC_KEYS`
 - use `info` for request lifecycle, `warn` for rejected auth, `error` only for real gateway failures
 - do not log downstream response bodies
 
@@ -431,16 +459,17 @@ PORT=8080
 SPRING_CLOUD_GATEWAY_ROUTES_USER_SERVICE_URL=http://user-service:8081
 SPRING_CLOUD_GATEWAY_ROUTES_TASK_SERVICE_URL=http://task-service:8082
 SPRING_CLOUD_GATEWAY_ROUTES_NOTIFICATION_SERVICE_URL=http://notification-service:8083
-JWT_SECRET=replace_with_minimum_32_char_random_string
+JWT_PUBLIC_KEYS=-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----   # RS256 verify-only, newest-first list
 SPRING_REDIS_HOST=redis
 SPRING_REDIS_PORT=6379
+CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
 ```
 
 Rules:
 - `.env` is gitignored
 - `.env.example` is committed
-- never hardcode `JWT_SECRET`
-- `JWT_SECRET` must match user-service exactly
+- never hardcode `JWT_PUBLIC_KEYS`
+- `JWT_PUBLIC_KEYS` must be the public half of user-service's signing key (RS256, `kid=proops-v1`)
 
 ---
 

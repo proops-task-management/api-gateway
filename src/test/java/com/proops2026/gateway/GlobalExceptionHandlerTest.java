@@ -45,7 +45,7 @@ class GlobalExceptionHandlerTest {
             () -> "http://localhost:" + downstream.getPort());
         registry.add("gateway.routes.notification-service-url",
             () -> "http://localhost:" + downstream.getPort());
-        registry.add("jwt.secret", () -> TestJwtHelper.SECRET);
+        registry.add("jwt.public-keys", () -> TestJwtHelper.PUBLIC_KEY_PEM);
     }
 
     @Test

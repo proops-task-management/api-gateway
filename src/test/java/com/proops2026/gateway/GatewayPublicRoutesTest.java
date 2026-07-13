@@ -49,7 +49,7 @@ class GatewayPublicRoutesTest {
             () -> "http://localhost:" + userService.getPort());
         registry.add("gateway.routes.notification-service-url",
             () -> "http://localhost:" + userService.getPort());
-        registry.add("jwt.secret", () -> TestJwtHelper.SECRET);
+        registry.add("jwt.public-keys", () -> TestJwtHelper.PUBLIC_KEY_PEM);
     }
 
     @Test

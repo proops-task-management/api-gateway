@@ -55,7 +55,7 @@ class GatewayProtectedRoutesTest {
             () -> "http://localhost:" + taskService.getPort());
         registry.add("gateway.routes.notification-service-url",
             () -> "http://localhost:" + notificationService.getPort());
-        registry.add("jwt.secret", () -> TestJwtHelper.SECRET);
+        registry.add("jwt.public-keys", () -> TestJwtHelper.PUBLIC_KEY_PEM);
     }
 
     @Test
@@ -98,7 +98,7 @@ class GatewayProtectedRoutesTest {
 
     @Test
     void getTasks_invalidToken_returns401() {
-        String badToken = TestJwtHelper.tokenSignedWithWrongSecret("user-1", "member");
+        String badToken = TestJwtHelper.tokenSignedWithWrongKey("user-1", "member");
 
         webTestClient.get().uri("/tasks")
             .header("Authorization", "Bearer " + badToken)

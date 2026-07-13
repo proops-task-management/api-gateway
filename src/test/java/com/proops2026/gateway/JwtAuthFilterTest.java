@@ -51,7 +51,7 @@ class JwtAuthFilterTest {
             () -> "http://localhost:" + downstream.getPort());
         registry.add("gateway.routes.notification-service-url",
             () -> "http://localhost:" + downstream.getPort());
-        registry.add("jwt.secret", () -> TestJwtHelper.SECRET);
+        registry.add("jwt.public-keys", () -> TestJwtHelper.PUBLIC_KEY_PEM);
     }
 
     @Test
@@ -127,7 +127,7 @@ class JwtAuthFilterTest {
             .expectHeader().contentType("application/json")
             .expectStatus().isUnauthorized();
 
-        String badToken = TestJwtHelper.tokenSignedWithWrongSecret("u", "member");
+        String badToken = TestJwtHelper.tokenSignedWithWrongKey("u", "member");
         webTestClient.get().uri("/tasks")
             .header("Authorization", "Bearer " + badToken)
             .exchange()

@@ -22,6 +22,15 @@
         <spring-cloud.version>2025.0.0</spring-cloud.version>
         <jjwt.version>0.13.0</jjwt.version>
         <lombok.version>1.18.46</lombok.version>
+
+        <!-- SonarCloud (MIN-35): Java analysis runs via SonarScanner for Maven (mvn sonar:sonar),
+             which auto-derives sonar.java.libraries/test.libraries/binaries from the reactor —
+             fixes the "Missing sonar.java.libraries" warning. projectKey/organization live here
+             now (supersedes sonar-project.properties). host.url comes from the CI composite env. -->
+        <sonar.projectKey>proops-task-management_api-gateway</sonar.projectKey>
+        <sonar.organization>proops-task-management</sonar.organization>
+        <sonar.coverage.jacoco.xmlReportPaths>target/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
+        <sonar.exclusions>**/target/**</sonar.exclusions>
     </properties>
 
     <dependencies>
